@@ -8,16 +8,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/v2fly/v2ray-core/v4/app/router"
-	"github.com/v2fly/v2ray-core/v4/app/router/routercommon"
-	"github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon/testassist"
-
-	// Geo loaders
-	_ "github.com/v2fly/v2ray-core/v4/infra/conf/geodata/memconservative"
-	_ "github.com/v2fly/v2ray-core/v4/infra/conf/geodata/standard"
-	router2 "github.com/v2fly/v2ray-core/v4/infra/conf/synthetic/router"
+	"github.com/v2fly/v2ray-core/v5/app/router"
+	"github.com/v2fly/v2ray-core/v5/app/router/routercommon"
+	"github.com/v2fly/v2ray-core/v5/common/net"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/cfgcommon/testassist"
+	_ "github.com/v2fly/v2ray-core/v5/infra/conf/geodata/memconservative"
+	_ "github.com/v2fly/v2ray-core/v5/infra/conf/geodata/standard"
+	router2 "github.com/v2fly/v2ray-core/v5/infra/conf/synthetic/router"
 )
 
 func TestRouterConfig(t *testing.T) {
@@ -115,6 +113,7 @@ func TestRouterConfig(t *testing.T) {
 						Tag:              "b1",
 						OutboundSelector: []string{"test"},
 						Strategy:         "random",
+						StrategySettings: serial.ToTypedMessage(&router.StrategyRandomConfig{}),
 					},
 					{
 						Tag:              "b2",

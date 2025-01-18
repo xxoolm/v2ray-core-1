@@ -8,12 +8,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/v2fly/v2ray-core/v4/common/environment/envctx"
-	"github.com/v2fly/v2ray-core/v4/common/environment/filesystemcap"
-	"github.com/v2fly/v2ray-core/v4/common/protoext"
+	"github.com/v2fly/v2ray-core/v5/common/environment/envctx"
+	"github.com/v2fly/v2ray-core/v5/common/environment/filesystemcap"
+	"github.com/v2fly/v2ray-core/v5/common/protoext"
 )
 
-//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v5/common/errors/errorgen
 
 func FilterProtoConfig(ctx context.Context, config proto.Message) error {
 	messageProtoReflect := config.ProtoReflect()
@@ -53,12 +53,14 @@ func filterMessage(ctx context.Context, message protoreflect.Message) error {
 			}
 
 			if v2extension.ConvertTimeParseIp != "" {
-				strIp := value.String()
-				ipValue := net.ParseIP(strIp)
+				ipValue := net.ParseIP(value.String())
 				target := message.Descriptor().Fields().ByTextName(v2extension.ConvertTimeParseIp)
+				if ipValue.To4() != nil {
+					ipValue = ipValue.To4()
+				}
 				pendingWriteQueue = append(pendingWriteQueue, pendingWrite{
 					field: target,
-					value: protoreflect.ValueOf(ipValue),
+					value: protoreflect.ValueOf([]byte(ipValue)),
 				})
 			}
 		}
@@ -83,8 +85,11 @@ func filterMessage(ctx context.Context, message protoreflect.Message) error {
 	}
 
 	fsenvironment := envctx.EnvironmentFromContext(ctx)
-	fsifce := fsenvironment.(filesystemcap.FileSystemCapabilitySet)
+	fsifce, fsifceOk := fsenvironment.(filesystemcap.FileSystemCapabilitySet)
 	for _, v := range fileReadingQueue {
+		if !fsifceOk {
+			return newError("unable to read file as filesystem capability is not given")
+		}
 		field := message.Descriptor().Fields().ByTextName(v.field)
 		if v.filename == "" {
 			continue
@@ -116,10 +121,7 @@ func filterMap(ctx context.Context, mapValue protoreflect.Map) error {
 	var err error
 	mapValue.Range(func(key protoreflect.MapKey, value protoreflect.Value) bool {
 		err = filterMessage(ctx, value.Message())
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	})
 	return err
 }

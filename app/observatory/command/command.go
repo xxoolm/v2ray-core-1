@@ -3,7 +3,7 @@
 
 package command
 
-//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v5/common/errors/errorgen
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/app/observatory"
-	"github.com/v2fly/v2ray-core/v4/common"
-	"github.com/v2fly/v2ray-core/v4/features"
-	"github.com/v2fly/v2ray-core/v4/features/extension"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/app/observatory"
+	"github.com/v2fly/v2ray-core/v5/common"
+	"github.com/v2fly/v2ray-core/v5/features"
+	"github.com/v2fly/v2ray-core/v5/features/extension"
 )
 
 type service struct {
@@ -34,6 +34,9 @@ func (s *service) GetOutboundStatus(ctx context.Context, request *GetOutboundSta
 		}
 		result = observeResult
 	} else {
+		if _, ok := s.observatory.(features.TaggedFeatures); !ok {
+			return nil, newError("observatory does not support tagged features")
+		}
 		fet, err := s.observatory.(features.TaggedFeatures).GetFeaturesByTag(request.Tag)
 		if err != nil {
 			return nil, newError("cannot get tagged observatory").Base(err)

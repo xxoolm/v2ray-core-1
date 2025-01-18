@@ -8,10 +8,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/jsonpb"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/v2jsonpb"
-	"github.com/v2fly/v2ray-core/v4/main/commands/base"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/jsonpb"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/v2jsonpb"
+	"github.com/v2fly/v2ray-core/v5/main/commands/base"
 )
 
 var cmdReversePb = &base.Command{
@@ -31,7 +31,7 @@ var cmdReversePb = &base.Command{
 		}
 		switch *configFormat {
 		case "jsonpb":
-			if err := jsonpb.DumpJsonPb(&conf, os.Stdout); err != nil {
+			if err := jsonpb.DumpJSONPb(&conf, os.Stdout); err != nil {
 				base.Fatalf("%s", err)
 			}
 		case "v2jsonpb":
@@ -41,4 +41,5 @@ var cmdReversePb = &base.Command{
 				io.Copy(os.Stdout, bytes.NewReader(value))
 			}
 		}
-	}}
+	},
+}

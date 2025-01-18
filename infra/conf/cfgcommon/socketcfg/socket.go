@@ -3,7 +3,7 @@ package socketcfg
 import (
 	"strings"
 
-	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/v2fly/v2ray-core/v5/transport/internet"
 )
 
 type SocketConfig struct {
@@ -12,7 +12,13 @@ type SocketConfig struct {
 	TProxy               string `json:"tproxy"`
 	AcceptProxyProtocol  bool   `json:"acceptProxyProtocol"`
 	TCPKeepAliveInterval int32  `json:"tcpKeepAliveInterval"`
+	TCPKeepAliveIdle     int32  `json:"tcpKeepAliveIdle"`
 	TFOQueueLength       uint32 `json:"tcpFastOpenQueueLength"`
+	BindToDevice         string `json:"bindToDevice"`
+	RxBufSize            uint64 `json:"rxBufSize"`
+	TxBufSize            uint64 `json:"txBufSize"`
+	ForceBufSize         bool   `json:"forceBufSize"`
+	MPTCP                *bool  `json:"mptcp"`
 }
 
 // Build implements Buildable.
@@ -41,6 +47,15 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 		tproxy = internet.SocketConfig_Off
 	}
 
+	var mptcpSettings internet.MPTCPState
+	if c.MPTCP != nil {
+		if *c.MPTCP {
+			mptcpSettings = internet.MPTCPState_Enable
+		} else {
+			mptcpSettings = internet.MPTCPState_Disable
+		}
+	}
+
 	return &internet.SocketConfig{
 		Mark:                 c.Mark,
 		Tfo:                  tfoSettings,
@@ -48,5 +63,11 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 		Tproxy:               tproxy,
 		AcceptProxyProtocol:  c.AcceptProxyProtocol,
 		TcpKeepAliveInterval: c.TCPKeepAliveInterval,
+		TcpKeepAliveIdle:     c.TCPKeepAliveIdle,
+		RxBufSize:            int64(c.RxBufSize),
+		TxBufSize:            int64(c.TxBufSize),
+		ForceBufSize:         c.ForceBufSize,
+		BindToDevice:         c.BindToDevice,
+		Mptcp:                mptcpSettings,
 	}, nil
 }

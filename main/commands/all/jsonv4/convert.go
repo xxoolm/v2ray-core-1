@@ -8,14 +8,14 @@ import (
 
 	"github.com/pelletier/go-toml"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/jsonpb"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/merge"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/v2jsonpb"
-	"github.com/v2fly/v2ray-core/v4/main/commands/base"
-	"github.com/v2fly/v2ray-core/v4/main/commands/helpers"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/jsonpb"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/merge"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/v2jsonpb"
+	"github.com/v2fly/v2ray-core/v5/main/commands/base"
+	"github.com/v2fly/v2ray-core/v5/main/commands/helpers"
 )
 
 var cmdConvert = &base.Command{
@@ -74,6 +74,7 @@ func setConfArgs(cmd *base.Command) {
 	cmd.Flag.StringVar(&outputFormat, "o", "json", "")
 	cmd.Flag.BoolVar(&confDirRecursively, "r", false, "")
 }
+
 func executeConvert(cmd *base.Command, args []string) {
 	setConfArgs(cmd)
 	cmd.Flag.Parse(args)
@@ -135,7 +136,7 @@ func executeConvert(cmd *base.Command, args []string) {
 			base.Fatalf(err.Error())
 		}
 		w := bytes.NewBuffer(nil)
-		err = jsonpb.DumpJsonPb(pbConfig, w)
+		err = jsonpb.DumpJSONPb(pbConfig, w)
 		if err != nil {
 			base.Fatalf(err.Error())
 		}

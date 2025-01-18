@@ -4,12 +4,16 @@
 
 package merge
 
-const priorityKey string = "_priority"
-const tagKey string = "_tag"
+import "fmt"
+
+const (
+	priorityKey string = "_priority"
+	tagKey      string = "_tag"
+)
 
 // ApplyRules applies merge rules according to _tag, _priority fields, and remove them
 func ApplyRules(m map[string]interface{}) error {
-	err := sortMergeSlices(m)
+	err := sortMergeSlices(m, "")
 	if err != nil {
 		return err
 	}
@@ -18,22 +22,22 @@ func ApplyRules(m map[string]interface{}) error {
 }
 
 // sortMergeSlices enumerates all slices in a map, to sort by priority and merge by tag
-func sortMergeSlices(target map[string]interface{}) error {
+func sortMergeSlices(target map[string]interface{}, path string) error {
 	for key, value := range target {
 		if slice, ok := value.([]interface{}); ok {
 			sortByPriority(slice)
-			s, err := mergeSameTag(slice)
+			s, err := mergeSameTag(slice, fmt.Sprintf("%s.%s", path, key))
 			if err != nil {
 				return err
 			}
 			target[key] = s
 			for _, item := range s {
 				if m, ok := item.(map[string]interface{}); ok {
-					sortMergeSlices(m)
+					sortMergeSlices(m, fmt.Sprintf("%s.%s[]", path, key))
 				}
 			}
 		} else if field, ok := value.(map[string]interface{}); ok {
-			sortMergeSlices(field)
+			sortMergeSlices(field, fmt.Sprintf("%s.%s", path, key))
 		}
 	}
 	return nil

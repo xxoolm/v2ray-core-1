@@ -9,12 +9,12 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 
-	"github.com/v2fly/v2ray-core/v4/app/router/routercommon"
-	"github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/features/outbound"
-	"github.com/v2fly/v2ray-core/v4/features/routing"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/v5cfg"
+	"github.com/v2fly/v2ray-core/v5/app/router/routercommon"
+	"github.com/v2fly/v2ray-core/v5/common/net"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/features/outbound"
+	"github.com/v2fly/v2ray-core/v5/features/routing"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/v5cfg"
 )
 
 type Rule struct {
@@ -42,6 +42,18 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 		cond, err := NewDomainMatcher(rr.DomainMatcher, rr.Domain)
 		if err != nil {
 			return nil, newError("failed to build domain condition").Base(err)
+		}
+		conds.Add(cond)
+	}
+
+	var geoDomains []*routercommon.Domain
+	for _, geo := range rr.GeoDomain {
+		geoDomains = append(geoDomains, geo.Domain...)
+	}
+	if len(geoDomains) > 0 {
+		cond, err := NewDomainMatcher(rr.DomainMatcher, geoDomains)
+		if err != nil {
+			return nil, newError("failed to build geo domain condition").Base(err)
 		}
 		conds.Add(cond)
 	}
@@ -132,7 +144,7 @@ func (br *BalancingRule) Build(ohm outbound.Manager, dispatcher routing.Dispatch
 		return &Balancer{
 			selectors: br.OutboundSelector,
 			strategy:  &LeastPingStrategy{config: s},
-			ohm:       ohm,
+			ohm:       ohm, fallbackTag: br.FallbackTag,
 		}, nil
 	case "leastload":
 		i, err := serial.GetInstanceOf(br.StrategySettings)
@@ -152,10 +164,22 @@ func (br *BalancingRule) Build(ohm outbound.Manager, dispatcher routing.Dispatch
 	case "random":
 		fallthrough
 	case "":
+		var randomStrategy *RandomStrategy
+		if br.StrategySettings != nil {
+			i, err := serial.GetInstanceOf(br.StrategySettings)
+			if err != nil {
+				return nil, err
+			}
+			s, ok := i.(*StrategyRandomConfig)
+			if !ok {
+				return nil, newError("not a StrategyRandomConfig").AtError()
+			}
+			randomStrategy = NewRandomStrategy(s)
+		}
 		return &Balancer{
 			selectors: br.OutboundSelector,
 			ohm:       ohm, fallbackTag: br.FallbackTag,
-			strategy: &RandomStrategy{},
+			strategy: randomStrategy,
 		}, nil
 	default:
 		return nil, newError("unrecognized balancer type")
@@ -178,7 +202,7 @@ func (br *BalancingRule) UnmarshalJSONPB(unmarshaler *jsonpb.Unmarshaler, bytes 
 	if stub.Strategy == "" {
 		stub.Strategy = "random"
 	}
-	settingsPack, err := v5cfg.LoadHeterogeneousConfigFromRawJson(context.TODO(), "balancer", stub.Strategy, stub.StrategySettings)
+	settingsPack, err := v5cfg.LoadHeterogeneousConfigFromRawJSON(context.TODO(), "balancer", stub.Strategy, stub.StrategySettings)
 	if err != nil {
 		return err
 	}

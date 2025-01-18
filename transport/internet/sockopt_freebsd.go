@@ -141,6 +141,22 @@ func applyOutboundSocketOptions(network string, address string, fd uintptr, conf
 				return newError("failed to set TCP_FASTOPEN_CONNECT=0").Base(err)
 			}
 		}
+
+		if config.TcpKeepAliveIdle > 0 {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_KEEPIDLE, int(config.TcpKeepAliveIdle)); err != nil {
+				return newError("failed to set TCP_KEEPIDLE").Base(err)
+			}
+		}
+		if config.TcpKeepAliveInterval > 0 {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_KEEPINTVL, int(config.TcpKeepAliveInterval)); err != nil {
+				return newError("failed to set TCP_KEEPINTVL").Base(err)
+			}
+		}
+		if config.TcpKeepAliveIdle > 0 || config.TcpKeepAliveInterval > 0 {
+			if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_KEEPALIVE, 1); err != nil {
+				return newError("failed to set SO_KEEPALIVE").Base(err)
+			}
+		}
 	}
 
 	if config.Tproxy.IsEnabled() {
@@ -155,6 +171,19 @@ func applyOutboundSocketOptions(network string, address string, fd uintptr, conf
 			}
 		}
 	}
+
+	if config.TxBufSize != 0 {
+		if err := unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_SNDBUF, int(config.TxBufSize)); err != nil {
+			return newError("failed to set SO_SNDBUF").Base(err)
+		}
+	}
+
+	if config.RxBufSize != 0 {
+		if err := unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_RCVBUF, int(config.RxBufSize)); err != nil {
+			return newError("failed to set SO_RCVBUF").Base(err)
+		}
+	}
+
 	return nil
 }
 
@@ -175,6 +204,21 @@ func applyInboundSocketOptions(network string, fd uintptr, config *SocketConfig)
 				return newError("failed to set TCP_FASTOPEN=0").Base(err)
 			}
 		}
+		if config.TcpKeepAliveIdle > 0 {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_KEEPIDLE, int(config.TcpKeepAliveIdle)); err != nil {
+				return newError("failed to set TCP_KEEPIDLE").Base(err)
+			}
+		}
+		if config.TcpKeepAliveInterval > 0 {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_KEEPINTVL, int(config.TcpKeepAliveInterval)); err != nil {
+				return newError("failed to set TCP_KEEPINTVL").Base(err)
+			}
+		}
+		if config.TcpKeepAliveIdle > 0 || config.TcpKeepAliveInterval > 0 {
+			if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_KEEPALIVE, 1); err != nil {
+				return newError("failed to set SO_KEEPALIVE").Base(err)
+			}
+		}
 	}
 
 	if config.Tproxy.IsEnabled() {
@@ -182,6 +226,18 @@ func applyInboundSocketOptions(network string, fd uintptr, config *SocketConfig)
 			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_BINDANY, 1); err != nil {
 				return newError("failed to set inbound IP_BINDANY").Base(err)
 			}
+		}
+	}
+
+	if config.TxBufSize != 0 {
+		if err := unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_SNDBUF, int(config.TxBufSize)); err != nil {
+			return newError("failed to set SO_SNDBUF").Base(err)
+		}
+	}
+
+	if config.RxBufSize != 0 {
+		if err := unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_RCVBUF, int(config.RxBufSize)); err != nil {
+			return newError("failed to set SO_RCVBUF").Base(err)
 		}
 	}
 

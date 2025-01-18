@@ -5,7 +5,7 @@ import (
 
 	"github.com/v2fly/VSign/signerVerify"
 
-	"github.com/v2fly/v2ray-core/v4/main/commands/base"
+	"github.com/v2fly/v2ray-core/v5/main/commands/base"
 )
 
 var cmdVerify = &base.Command{
@@ -25,9 +25,7 @@ func init() {
 	cmdVerify.Run = executeVerify // break init loop
 }
 
-var (
-	verifySigFile = cmdVerify.Flag.String("sig", "", "Path to the signature file")
-)
+var verifySigFile = cmdVerify.Flag.String("sig", "", "Path to the signature file")
 
 func executeVerify(cmd *base.Command, args []string) {
 	target := cmdVerify.Flag.Arg(0)
@@ -47,7 +45,6 @@ func executeVerify(cmd *base.Command, args []string) {
 	files := cmdVerify.Flag.Args()
 
 	err = signerVerify.OutputAndJudge(signerVerify.CheckSignaturesV2Fly(sigReader, files))
-
 	if err != nil {
 		base.Fatalf("file is not officially signed by V2Ray: %s", err)
 	}

@@ -4,9 +4,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/v2fly/v2ray-core/v4/common/buf"
-	"github.com/v2fly/v2ray-core/v4/common/platform"
-	"github.com/v2fly/v2ray-core/v4/common/platform/filesystem/fsifce"
+	"github.com/v2fly/v2ray-core/v5/common/buf"
+	"github.com/v2fly/v2ray-core/v5/common/platform"
+	"github.com/v2fly/v2ray-core/v5/common/platform/filesystem/fsifce"
 )
 
 var NewFileSeeker fsifce.FileSeekerFunc = func(path string) (io.ReadSeekCloser, error) {
@@ -45,12 +45,12 @@ func ReadAsset(file string) ([]byte, error) {
 	return ReadFile(platform.GetAssetLocation(file))
 }
 
-func CopyFile(dst string, src string) error {
+func CopyFile(dst string, src string, perm os.FileMode) error {
 	bytes, err := ReadFile(src)
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, perm)
 	if err != nil {
 		return err
 	}

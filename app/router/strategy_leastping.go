@@ -6,11 +6,11 @@ package router
 import (
 	"context"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/app/observatory"
-	"github.com/v2fly/v2ray-core/v4/common"
-	"github.com/v2fly/v2ray-core/v4/features"
-	"github.com/v2fly/v2ray-core/v4/features/extension"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/app/observatory"
+	"github.com/v2fly/v2ray-core/v5/common"
+	"github.com/v2fly/v2ray-core/v5/features"
+	"github.com/v2fly/v2ray-core/v5/features/extension"
 )
 
 type LeastPingStrategy struct {
@@ -38,6 +38,11 @@ func (l *LeastPingStrategy) PickOutbound(strings []string) string {
 			}
 			return nil
 		}))
+	}
+
+	if l.observatory == nil {
+		newError("cannot find observatory").WriteToLog()
+		return ""
 	}
 
 	observeReport, err := l.observatory.GetObservation(l.ctx)

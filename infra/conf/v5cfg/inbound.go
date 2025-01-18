@@ -2,14 +2,15 @@ package v5cfg
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/app/proxyman"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/proxy/dokodemo"
-	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/app/proxyman"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/proxy/dokodemo"
+	"github.com/v2fly/v2ray-core/v5/transport/internet"
 )
 
 func (c InboundConfig) BuildV5(ctx context.Context) (proto.Message, error) {
@@ -24,7 +25,7 @@ func (c InboundConfig) BuildV5(ctx context.Context) (proto.Message, error) {
 	} else {
 		// Listen on specific IP or Unix Domain Socket
 		receiverSettings.Listen = c.ListenOn.Build()
-		listenDS := c.ListenOn.Family().IsDomain() && (c.ListenOn.Domain()[0] == '/' || c.ListenOn.Domain()[0] == '@')
+		listenDS := c.ListenOn.Family().IsDomain() && (filepath.IsAbs(c.ListenOn.Domain()) || c.ListenOn.Domain()[0] == '@')
 		listenIP := c.ListenOn.Family().IsIP() || (c.ListenOn.Family().IsDomain() && c.ListenOn.Domain() == "localhost")
 		switch {
 		case listenIP:
@@ -64,11 +65,14 @@ func (c InboundConfig) BuildV5(ctx context.Context) (proto.Message, error) {
 		c.Settings = []byte("{}")
 	}
 
-	inboundConfigPack, err := loadHeterogeneousConfigFromRawJson("inbound", c.Protocol, c.Settings)
+	inboundConfigPack, err := loadHeterogeneousConfigFromRawJSON("inbound", c.Protocol, c.Settings)
 	if err != nil {
 		return nil, newError("unable to load inbound protocol config").Base(err)
 	}
 
+	if content, ok := inboundConfigPack.(*dokodemo.SimplifiedConfig); ok {
+		receiverSettings.ReceiveOriginalDestination = content.FollowRedirect
+	}
 	if content, ok := inboundConfigPack.(*dokodemo.Config); ok {
 		receiverSettings.ReceiveOriginalDestination = content.FollowRedirect
 	}

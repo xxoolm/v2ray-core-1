@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/main/commands/base"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/main/commands/base"
 )
 
 var (
@@ -80,7 +80,7 @@ func dialAPIServerWithContext(ctx context.Context) (conn *grpc.ClientConn) {
 	return
 }
 
-func protoToJSONString(m proto.Message, prefix, indent string) (string, error) {
+func protoToJSONString(m proto.Message, prefix, indent string) (string, error) { // nolint: unparam
 	return strings.TrimSpace(protojson.MarshalOptions{Indent: indent}.Format(m)), nil
 }
 

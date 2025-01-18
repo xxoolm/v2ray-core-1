@@ -11,9 +11,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	protov2 "google.golang.org/protobuf/proto"
 
-	"github.com/v2fly/v2ray-core/v4/common/protoext"
-	"github.com/v2fly/v2ray-core/v4/common/protofilter"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
+	"github.com/v2fly/v2ray-core/v5/common/protoext"
+	"github.com/v2fly/v2ray-core/v5/common/protofilter"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
 )
 
 type implementationRegistry struct {
@@ -49,7 +49,7 @@ func (i *implementationRegistry) LoadImplementationByAlias(ctx context.Context, 
 
 	if strings.HasPrefix(alias, "#") {
 		// skip resolution for full name
-		implementationFullName = alias
+		implementationFullName, _ = strings.CutPrefix(alias, "#")
 	} else {
 		registryResult, customLoader, err := i.findImplementationByAlias(interfaceType, alias)
 		if err != nil {
@@ -72,12 +72,18 @@ func (i *implementationRegistry) LoadImplementationByAlias(ctx context.Context, 
 	}
 
 	implementationConfigInstancev2 := proto.MessageV2(implementationConfigInstance)
+
+	if isRestrictedModeContext(ctx) {
+		if err := enforceRestriction(implementationConfigInstancev2); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := protofilter.FilterProtoConfig(ctx, implementationConfigInstancev2); err != nil {
 		return nil, err
 	}
 
 	return implementationConfigInstance.(proto.Message), nil
-
 }
 
 func newImplementationRegistry() *implementationRegistry {
@@ -107,7 +113,7 @@ func RegisterImplementation(proto interface{}, loader CustomLoader) error {
 
 func registerImplementation(proto interface{}, loader CustomLoader) error {
 	protoReflect := reflect.New(reflect.TypeOf(proto).Elem())
-	var proto2 = protoReflect.Interface().(protov2.Message)
+	proto2 := protoReflect.Interface().(protov2.Message)
 	msgDesc := proto2.ProtoReflect().Descriptor()
 	fullName := string(msgDesc.FullName())
 	msgOpts, err := protoext.GetMessageOptions(msgDesc)

@@ -2,19 +2,21 @@ package v4
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/common/protocol"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon"
-	"github.com/v2fly/v2ray-core/v4/proxy/vless"
-	"github.com/v2fly/v2ray-core/v4/proxy/vless/inbound"
-	"github.com/v2fly/v2ray-core/v4/proxy/vless/outbound"
+	"github.com/v2fly/v2ray-core/v5/common/net"
+	"github.com/v2fly/v2ray-core/v5/common/protocol"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/cfgcommon"
+	"github.com/v2fly/v2ray-core/v5/proxy/vless"
+	"github.com/v2fly/v2ray-core/v5/proxy/vless/inbound"
+	"github.com/v2fly/v2ray-core/v5/proxy/vless/outbound"
 )
 
 type VLessInboundFallback struct {
@@ -88,24 +90,21 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
 			return nil, newError(`VLESS fallbacks: "path" must be empty or start with "/"`)
 		}
 		if fb.Type == "" && fb.Dest != "" {
-			if fb.Dest == "serve-ws-none" {
+			if fb.Dest == "serve-ws-none" { // nolint:gocritic
 				fb.Type = "serve"
+			} else if filepath.IsAbs(fb.Dest) || fb.Dest[0] == '@' {
+				fb.Type = "unix"
+				if strings.HasPrefix(fb.Dest, "@@") && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
+					fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path)) // may need padding to work with haproxy
+					copy(fullAddr, fb.Dest[1:])
+					fb.Dest = string(fullAddr)
+				}
 			} else {
-				switch fb.Dest[0] {
-				case '@', '/':
-					fb.Type = "unix"
-					if fb.Dest[0] == '@' && len(fb.Dest) > 1 && fb.Dest[1] == '@' && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
-						fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path)) // may need padding to work with haproxy
-						copy(fullAddr, fb.Dest[1:])
-						fb.Dest = string(fullAddr)
-					}
-				default:
-					if _, err := strconv.Atoi(fb.Dest); err == nil {
-						fb.Dest = "127.0.0.1:" + fb.Dest
-					}
-					if _, _, err := net.SplitHostPort(fb.Dest); err == nil {
-						fb.Type = "tcp"
-					}
+				if _, err := strconv.Atoi(fb.Dest); err == nil {
+					fb.Dest = "127.0.0.1:" + fb.Dest
+				}
+				if _, _, err := net.SplitHostPort(fb.Dest); err == nil {
+					fb.Type = "tcp"
 				}
 			}
 		}

@@ -6,12 +6,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/v2fly/v2ray-core/v4/common/platform/filesystem"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon"
-	"github.com/v2fly/v2ray-core/v4/transport/internet/tls"
+	"github.com/v2fly/v2ray-core/v5/common/platform/filesystem"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/cfgcommon"
+	"github.com/v2fly/v2ray-core/v5/transport/internet/tls"
 )
 
-//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v5/common/errors/errorgen
 
 type TLSConfig struct {
 	Insecure                         bool                  `json:"allowInsecure"`
@@ -22,6 +22,8 @@ type TLSConfig struct {
 	DisableSystemRoot                bool                  `json:"disableSystemRoot"`
 	PinnedPeerCertificateChainSha256 *[]string             `json:"pinnedPeerCertificateChainSha256"`
 	VerifyClientCertificate          bool                  `json:"verifyClientCertificate"`
+	ECHConfig                        string                `json:"echConfig"`
+	ECHDOHServer                     string                `json:"echDohServer"`
 }
 
 // Build implements Buildable.
@@ -57,6 +59,16 @@ func (c *TLSConfig) Build() (proto.Message, error) {
 			config.PinnedPeerCertificateChainSha256 = append(config.PinnedPeerCertificateChainSha256, hashValue)
 		}
 	}
+
+	if c.ECHConfig != "" {
+		ECHConfig, err := base64.StdEncoding.DecodeString(c.ECHConfig)
+		if err != nil {
+			return nil, newError("invalid ECH Config", c.ECHConfig)
+		}
+		config.EchConfig = ECHConfig
+	}
+
+	config.Ech_DOHserver = c.ECHDOHServer
 
 	return config, nil
 }

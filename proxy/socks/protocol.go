@@ -3,11 +3,12 @@ package socks
 import (
 	"encoding/binary"
 	"io"
+	gonet "net"
 
-	"github.com/v2fly/v2ray-core/v4/common"
-	"github.com/v2fly/v2ray-core/v4/common/buf"
-	"github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v5/common"
+	"github.com/v2fly/v2ray-core/v5/common/buf"
+	"github.com/v2fly/v2ray-core/v5/common/net"
+	"github.com/v2fly/v2ray-core/v5/common/protocol"
 )
 
 const (
@@ -359,6 +360,17 @@ func EncodeUDPPacket(request *protocol.RequestHeader, data []byte) (*buf.Buffer,
 	return b, nil
 }
 
+func EncodeUDPPacketFromAddress(address net.Destination, data []byte) (*buf.Buffer, error) {
+	b := buf.New()
+	common.Must2(b.Write([]byte{0, 0, 0 /* Fragment */}))
+	if err := addrParser.WriteAddressPort(b, address.Address, address.Port); err != nil {
+		b.Release()
+		return nil, err
+	}
+	common.Must2(b.Write(data))
+	return b, nil
+}
+
 type UDPReader struct {
 	reader io.Reader
 }
@@ -376,6 +388,23 @@ func (r *UDPReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 		return nil, err
 	}
 	return buf.MultiBuffer{b}, nil
+}
+
+func (r *UDPReader) ReadFrom(p []byte) (n int, addr gonet.Addr, err error) {
+	buffer := buf.New()
+	_, err = buffer.ReadFrom(r.reader)
+	if err != nil {
+		buffer.Release()
+		return 0, nil, err
+	}
+	req, err := DecodeUDPPacket(buffer)
+	if err != nil {
+		buffer.Release()
+		return 0, nil, err
+	}
+	n = copy(p, buffer.Bytes())
+	buffer.Release()
+	return n, &gonet.UDPAddr{IP: req.Address.IP(), Port: int(req.Port)}, nil
 }
 
 type UDPWriter struct {
@@ -403,7 +432,22 @@ func (w *UDPWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func ClientHandshake(request *protocol.RequestHeader, reader io.Reader, writer io.Writer) (*protocol.RequestHeader, error) {
+func (w *UDPWriter) WriteTo(payload []byte, addr gonet.Addr) (n int, err error) {
+	request := *w.request
+	udpAddr := addr.(*gonet.UDPAddr)
+	request.Command = protocol.RequestCommandUDP
+	request.Address = net.IPAddress(udpAddr.IP)
+	request.Port = net.Port(udpAddr.Port)
+	packet, err := EncodeUDPPacket(&request, payload)
+	if err != nil {
+		return 0, err
+	}
+	_, err = w.writer.Write(packet.Bytes())
+	packet.Release()
+	return len(payload), err
+}
+
+func ClientHandshake(request *protocol.RequestHeader, reader io.Reader, writer io.Writer, delayAuthWrite bool) (*protocol.RequestHeader, error) {
 	authByte := byte(authNotRequired)
 	if request.User != nil {
 		authByte = byte(authPassword)
@@ -413,14 +457,15 @@ func ClientHandshake(request *protocol.RequestHeader, reader io.Reader, writer i
 	defer b.Release()
 
 	common.Must2(b.Write([]byte{socks5Version, 0x01, authByte}))
-	if authByte == authPassword {
-		account := request.User.Account.(*Account)
-
-		common.Must(b.WriteByte(0x01))
-		common.Must(b.WriteByte(byte(len(account.Username))))
-		common.Must2(b.WriteString(account.Username))
-		common.Must(b.WriteByte(byte(len(account.Password))))
-		common.Must2(b.WriteString(account.Password))
+	if !delayAuthWrite {
+		if authByte == authPassword {
+			account := request.User.Account.(*Account)
+			common.Must(b.WriteByte(0x01))
+			common.Must(b.WriteByte(byte(len(account.Username))))
+			common.Must2(b.WriteString(account.Username))
+			common.Must(b.WriteByte(byte(len(account.Password))))
+			common.Must2(b.WriteString(account.Password))
+		}
 	}
 
 	if err := buf.WriteAllBytes(writer, b.Bytes()); err != nil {
@@ -441,6 +486,18 @@ func ClientHandshake(request *protocol.RequestHeader, reader io.Reader, writer i
 
 	if authByte == authPassword {
 		b.Clear()
+		if delayAuthWrite {
+			account := request.User.Account.(*Account)
+			common.Must(b.WriteByte(0x01))
+			common.Must(b.WriteByte(byte(len(account.Username))))
+			common.Must2(b.WriteString(account.Username))
+			common.Must(b.WriteByte(byte(len(account.Password))))
+			common.Must2(b.WriteString(account.Password))
+			if err := buf.WriteAllBytes(writer, b.Bytes()); err != nil {
+				return nil, err
+			}
+			b.Clear()
+		}
 		if _, err := b.ReadFullFrom(reader, 2); err != nil {
 			return nil, err
 		}
@@ -492,4 +549,47 @@ func ClientHandshake(request *protocol.RequestHeader, reader io.Reader, writer i
 	}
 
 	return nil, nil
+}
+
+func ClientHandshake4(request *protocol.RequestHeader, reader io.Reader, writer io.Writer) error {
+	b := buf.New()
+	defer b.Release()
+
+	common.Must2(b.Write([]byte{socks4Version, cmdTCPConnect}))
+	portBytes := b.Extend(2)
+	binary.BigEndian.PutUint16(portBytes, request.Port.Value())
+	switch request.Address.Family() {
+	case net.AddressFamilyIPv4:
+		common.Must2(b.Write(request.Address.IP()))
+	case net.AddressFamilyDomain:
+		common.Must2(b.Write([]byte{0x00, 0x00, 0x00, 0x01}))
+	case net.AddressFamilyIPv6:
+		return newError("ipv6 is not supported in socks4")
+	default:
+		panic("Unknown family type.")
+	}
+	if request.User != nil {
+		account := request.User.Account.(*Account)
+		common.Must2(b.WriteString(account.Username))
+	}
+	common.Must(b.WriteByte(0x00))
+	if request.Address.Family() == net.AddressFamilyDomain {
+		common.Must2(b.WriteString(request.Address.Domain()))
+		common.Must(b.WriteByte(0x00))
+	}
+	if err := buf.WriteAllBytes(writer, b.Bytes()); err != nil {
+		return err
+	}
+
+	b.Clear()
+	if _, err := b.ReadFullFrom(reader, 8); err != nil {
+		return err
+	}
+	if b.Byte(0) != 0x00 {
+		return newError("unexpected version of the reply code: ", b.Byte(0))
+	}
+	if b.Byte(1) != socks4RequestGranted {
+		return newError("server rejects request: ", b.Byte(1))
+	}
+	return nil
 }

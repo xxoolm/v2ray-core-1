@@ -1,14 +1,14 @@
 package log
 
-//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v5/common/errors/errorgen
 
 import (
 	"context"
 	"reflect"
 	"sync"
 
-	"github.com/v2fly/v2ray-core/v4/common"
-	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v5/common"
+	"github.com/v2fly/v2ray-core/v5/common/log"
 )
 
 // Instance is a log.Handler that handles logs.
@@ -23,7 +23,6 @@ type Instance struct {
 
 // New creates a new log.Instance based on the given config.
 func New(ctx context.Context, config *Config) (*Instance, error) {
-
 	if config.Error == nil {
 		config.Error = &LogSpecification{Type: LogType_Console, Level: log.Severity_Warning}
 	}

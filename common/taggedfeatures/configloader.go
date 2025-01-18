@@ -6,11 +6,11 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/v5cfg"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/v5cfg"
 )
 
-func LoadJsonConfig(ctx context.Context, interfaceType, defaultImpl string, message json.RawMessage) (*Config, error) {
+func LoadJSONConfig(ctx context.Context, interfaceType, defaultImpl string, message json.RawMessage) (*Config, error) {
 	type ItemStub struct {
 		MemberType string          `json:"type"`
 		Tag        string          `json:"tag"`
@@ -27,7 +27,7 @@ func LoadJsonConfig(ctx context.Context, interfaceType, defaultImpl string, mess
 		if v.MemberType == "" {
 			v.MemberType = defaultImpl
 		}
-		pack, err := v5cfg.LoadHeterogeneousConfigFromRawJson(ctx, interfaceType, v.MemberType, v.Value)
+		pack, err := v5cfg.LoadHeterogeneousConfigFromRawJSON(ctx, interfaceType, v.MemberType, v.Value)
 		if err != nil {
 			return nil, err
 		}

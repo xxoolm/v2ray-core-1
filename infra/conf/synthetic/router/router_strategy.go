@@ -3,10 +3,10 @@ package router
 import (
 	"github.com/golang/protobuf/proto"
 
-	"github.com/v2fly/v2ray-core/v4/app/observatory/burst"
-	"github.com/v2fly/v2ray-core/v4/app/router"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon/duration"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon/loader"
+	"github.com/v2fly/v2ray-core/v5/app/observatory/burst"
+	"github.com/v2fly/v2ray-core/v5/app/router"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/cfgcommon/duration"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/cfgcommon/loader"
 )
 
 const (
@@ -15,16 +15,13 @@ const (
 	strategyLeastPing string = "leastping"
 )
 
-var (
-	strategyConfigLoader = loader.NewJSONConfigLoader(loader.ConfigCreatorCache{
-		strategyRandom:    func() interface{} { return new(strategyEmptyConfig) },
-		strategyLeastLoad: func() interface{} { return new(strategyLeastLoadConfig) },
-		strategyLeastPing: func() interface{} { return new(strategyLeastPingConfig) },
-	}, "type", "settings")
-)
+var strategyConfigLoader = loader.NewJSONConfigLoader(loader.ConfigCreatorCache{
+	strategyRandom:    func() interface{} { return new(strategyRandomConfig) },
+	strategyLeastLoad: func() interface{} { return new(strategyLeastLoadConfig) },
+	strategyLeastPing: func() interface{} { return new(strategyLeastPingConfig) },
+}, "type", "settings")
 
-type strategyEmptyConfig struct {
-}
+type strategyEmptyConfig struct{}
 
 func (v *strategyEmptyConfig) Build() (proto.Message, error) {
 	return nil, nil
@@ -37,7 +34,7 @@ type strategyLeastLoadConfig struct {
 	Baselines []duration.Duration `json:"baselines,omitempty"`
 	// expected nodes count to select
 	Expected int32 `json:"expected,omitempty"`
-	// max acceptable rtt, filter away high delay nodes. defalut 0
+	// max acceptable rtt, filter away high delay nodes. default 0
 	MaxRTT duration.Duration `json:"maxRTT,omitempty"`
 	// acceptable failure rate
 	Tolerance float64 `json:"tolerance,omitempty"`
@@ -100,4 +97,13 @@ type strategyLeastPingConfig struct {
 
 func (s strategyLeastPingConfig) Build() (proto.Message, error) {
 	return &router.StrategyLeastPingConfig{ObserverTag: s.ObserverTag}, nil
+}
+
+type strategyRandomConfig struct {
+	AliveOnly   bool   `json:"aliveOnly,omitempty"`
+	ObserverTag string `json:"observerTag,omitempty"`
+}
+
+func (s strategyRandomConfig) Build() (proto.Message, error) {
+	return &router.StrategyRandomConfig{ObserverTag: s.ObserverTag, AliveOnly: s.AliveOnly}, nil
 }

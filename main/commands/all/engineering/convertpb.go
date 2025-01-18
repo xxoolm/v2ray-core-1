@@ -8,9 +8,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/common/cmdarg"
-	"github.com/v2fly/v2ray-core/v4/main/commands/base"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/common/cmdarg"
+	"github.com/v2fly/v2ray-core/v5/main/commands/base"
 )
 
 var (
@@ -41,12 +41,9 @@ var cmdConvertPb = &base.Command{
 			if len(configFiles) == 0 {
 				base.Fatalf("%s", newError("failed to load config").Base(err))
 				return
-
-			} else {
-				base.Fatalf("%s", newError(fmt.Sprintf("failed to load config: %s", configFiles)).Base(err))
-				return
 			}
-
+			base.Fatalf("%s", newError(fmt.Sprintf("failed to load config: %s", configFiles)).Base(err))
+			return
 		}
 		bytew, err := proto.Marshal(config)
 		if err != nil {
@@ -54,6 +51,5 @@ var cmdConvertPb = &base.Command{
 			return
 		}
 		io.Copy(os.Stdout, bytes.NewReader(bytew))
-
 	},
 }

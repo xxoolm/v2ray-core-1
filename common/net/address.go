@@ -66,7 +66,6 @@ type Address interface {
 	IP() net.IP     // IP of this Address
 	Domain() string // Domain of this Address
 	Family() AddressFamily
-
 	String() string // String representation of this Address
 }
 
@@ -221,4 +220,10 @@ func (d *IPOrDomain) UnmarshalJSONPB(unmarshaler *jsonpb.Unmarshaler, bytes []by
 	result := NewIPOrDomain(ParseAddress(ipOrDomain))
 	d.Address = result.Address
 	return nil
+}
+
+func (d *IPOrDomain) MarshalJSONPB(marshaler *jsonpb.Marshaler) ([]byte, error) {
+	ipod := d.AsAddress().String()
+
+	return json.Marshal(ipod)
 }

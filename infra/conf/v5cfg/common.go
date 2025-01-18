@@ -6,21 +6,21 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/v2fly/v2ray-core/v4/common/environment/envctx"
-	"github.com/v2fly/v2ray-core/v4/common/environment/envimpl"
-	"github.com/v2fly/v2ray-core/v4/common/registry"
+	"github.com/v2fly/v2ray-core/v5/common/environment/envctx"
+	"github.com/v2fly/v2ray-core/v5/common/environment/envimpl"
+	"github.com/v2fly/v2ray-core/v5/common/registry"
 )
 
-func loadHeterogeneousConfigFromRawJson(interfaceType, name string, rawJson json.RawMessage) (proto.Message, error) {
+func loadHeterogeneousConfigFromRawJSON(interfaceType, name string, rawJSON json.RawMessage) (proto.Message, error) {
 	fsdef := envimpl.NewDefaultFileSystemDefaultImpl()
 	ctx := envctx.ContextWithEnvironment(context.TODO(), fsdef)
-	if rawJson == nil || len(rawJson) == 0 {
-		rawJson = []byte("{}")
+	if len(rawJSON) == 0 {
+		rawJSON = []byte("{}")
 	}
-	return registry.LoadImplementationByAlias(ctx, interfaceType, name, []byte(rawJson))
+	return registry.LoadImplementationByAlias(ctx, interfaceType, name, []byte(rawJSON))
 }
 
-// LoadHeterogeneousConfigFromRawJson private API
-func LoadHeterogeneousConfigFromRawJson(ctx context.Context, interfaceType, name string, rawJson json.RawMessage) (proto.Message, error) {
-	return loadHeterogeneousConfigFromRawJson(interfaceType, name, rawJson)
+// LoadHeterogeneousConfigFromRawJSON private API
+func LoadHeterogeneousConfigFromRawJSON(ctx context.Context, interfaceType, name string, rawJSON json.RawMessage) (proto.Message, error) {
+	return loadHeterogeneousConfigFromRawJSON(interfaceType, name, rawJSON)
 }

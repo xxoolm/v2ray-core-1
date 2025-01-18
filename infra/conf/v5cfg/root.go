@@ -3,18 +3,19 @@ package v5cfg
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/app/dispatcher"
-	"github.com/v2fly/v2ray-core/v4/app/proxyman"
-	"github.com/v2fly/v2ray-core/v4/common/platform"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/geodata"
-	"github.com/v2fly/v2ray-core/v4/infra/conf/synthetic/log"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/app/dispatcher"
+	"github.com/v2fly/v2ray-core/v5/app/proxyman"
+	"github.com/v2fly/v2ray-core/v5/common/platform"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/cfgcommon"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/geodata"
+	"github.com/v2fly/v2ray-core/v5/infra/conf/synthetic/log"
 )
 
 func (c RootConfig) BuildV5(ctx context.Context) (proto.Message, error) {
@@ -28,9 +29,9 @@ func (c RootConfig) BuildV5(ctx context.Context) (proto.Message, error) {
 
 	var logConfMsg *anypb.Any
 	if c.LogConfig != nil {
-		logConfMsgUnpacked, err := loadHeterogeneousConfigFromRawJson("service", "log", c.LogConfig)
+		logConfMsgUnpacked, err := loadHeterogeneousConfigFromRawJSON("service", "log", c.LogConfig)
 		if err != nil {
-			return nil, err
+			return nil, newError("failed to parse Log config").Base(err)
 		}
 		logConfMsg = serial.ToTypedMessage(logConfMsgUnpacked)
 	} else {
@@ -41,15 +42,15 @@ func (c RootConfig) BuildV5(ctx context.Context) (proto.Message, error) {
 	config.App = append([]*anypb.Any{logConfMsg}, config.App...)
 
 	if c.RouterConfig != nil {
-		routerConfig, err := loadHeterogeneousConfigFromRawJson("service", "router", c.RouterConfig)
+		routerConfig, err := loadHeterogeneousConfigFromRawJSON("service", "router", c.RouterConfig)
 		if err != nil {
-			return nil, err
+			return nil, newError("failed to parse Router config").Base(err)
 		}
 		config.App = append(config.App, serial.ToTypedMessage(routerConfig))
 	}
 
 	if c.DNSConfig != nil {
-		dnsApp, err := loadHeterogeneousConfigFromRawJson("service", "dns", c.DNSConfig)
+		dnsApp, err := loadHeterogeneousConfigFromRawJSON("service", "dns", c.DNSConfig)
 		if err != nil {
 			return nil, newError("failed to parse DNS config").Base(err)
 		}
@@ -73,16 +74,16 @@ func (c RootConfig) BuildV5(ctx context.Context) (proto.Message, error) {
 	}
 
 	for serviceName, service := range c.Services {
-		servicePackedConfig, err := loadHeterogeneousConfigFromRawJson("service", serviceName, service)
+		servicePackedConfig, err := loadHeterogeneousConfigFromRawJSON("service", serviceName, service)
 		if err != nil {
-			return nil, err
+			return nil, newError(fmt.Sprintf("failed to parse %v config in Services", serviceName)).Base(err)
 		}
 		config.App = append(config.App, serial.ToTypedMessage(servicePackedConfig))
 	}
 	return config, nil
 }
 
-func loadJsonConfig(data []byte) (*core.Config, error) {
+func loadJSONConfig(data []byte) (*core.Config, error) {
 	rootConfig := &RootConfig{}
 
 	err := json.Unmarshal(data, rootConfig)

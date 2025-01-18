@@ -6,19 +6,19 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	core "github.com/v2fly/v2ray-core/v4"
-	"github.com/v2fly/v2ray-core/v4/app/observatory"
-	"github.com/v2fly/v2ray-core/v4/common"
-	"github.com/v2fly/v2ray-core/v4/common/signal/done"
-	"github.com/v2fly/v2ray-core/v4/features/extension"
-	"github.com/v2fly/v2ray-core/v4/features/outbound"
+	core "github.com/v2fly/v2ray-core/v5"
+	"github.com/v2fly/v2ray-core/v5/app/observatory"
+	"github.com/v2fly/v2ray-core/v5/common"
+	"github.com/v2fly/v2ray-core/v5/common/signal/done"
+	"github.com/v2fly/v2ray-core/v5/features/extension"
+	"github.com/v2fly/v2ray-core/v5/features/outbound"
 )
 
 type Observer struct {
 	config *Config
 	ctx    context.Context
 
-	statusLock sync.Mutex
+	statusLock sync.Mutex // nolint: structcheck
 	hp         *HealthPing
 
 	finished *done.Instance
@@ -66,7 +66,6 @@ func (o *Observer) Start() error {
 		o.hp.StartScheduler(func() ([]string, error) {
 			hs, ok := o.ohm.(outbound.HandlerSelector)
 			if !ok {
-
 				return nil, newError("outbound.Manager is not a HandlerSelector")
 			}
 

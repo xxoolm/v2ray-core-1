@@ -6,21 +6,23 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/v2fly/v2ray-core/v4/app/proxyman"
-	"github.com/v2fly/v2ray-core/v4/common"
-	"github.com/v2fly/v2ray-core/v4/common/buf"
-	"github.com/v2fly/v2ray-core/v4/common/net"
-	"github.com/v2fly/v2ray-core/v4/common/serial"
-	"github.com/v2fly/v2ray-core/v4/common/session"
-	"github.com/v2fly/v2ray-core/v4/common/signal/done"
-	"github.com/v2fly/v2ray-core/v4/common/task"
-	"github.com/v2fly/v2ray-core/v4/features/routing"
-	"github.com/v2fly/v2ray-core/v4/features/stats"
-	"github.com/v2fly/v2ray-core/v4/proxy"
-	"github.com/v2fly/v2ray-core/v4/transport/internet"
-	"github.com/v2fly/v2ray-core/v4/transport/internet/tcp"
-	"github.com/v2fly/v2ray-core/v4/transport/internet/udp"
-	"github.com/v2fly/v2ray-core/v4/transport/pipe"
+	"github.com/v2fly/v2ray-core/v5/app/proxyman"
+	"github.com/v2fly/v2ray-core/v5/common"
+	"github.com/v2fly/v2ray-core/v5/common/buf"
+	"github.com/v2fly/v2ray-core/v5/common/environment"
+	"github.com/v2fly/v2ray-core/v5/common/environment/envctx"
+	"github.com/v2fly/v2ray-core/v5/common/net"
+	"github.com/v2fly/v2ray-core/v5/common/serial"
+	"github.com/v2fly/v2ray-core/v5/common/session"
+	"github.com/v2fly/v2ray-core/v5/common/signal/done"
+	"github.com/v2fly/v2ray-core/v5/common/task"
+	"github.com/v2fly/v2ray-core/v5/features/routing"
+	"github.com/v2fly/v2ray-core/v5/features/stats"
+	"github.com/v2fly/v2ray-core/v5/proxy"
+	"github.com/v2fly/v2ray-core/v5/transport/internet"
+	"github.com/v2fly/v2ray-core/v5/transport/internet/tcp"
+	"github.com/v2fly/v2ray-core/v5/transport/internet/udp"
+	"github.com/v2fly/v2ray-core/v5/transport/pipe"
 )
 
 type worker interface {
@@ -112,6 +114,12 @@ func (w *tcpWorker) Proxy() proxy.Inbound {
 
 func (w *tcpWorker) Start() error {
 	ctx := context.Background()
+	proxyEnvironment := envctx.EnvironmentFromContext(w.ctx).(environment.ProxyEnvironment)
+	transportEnvironment, err := proxyEnvironment.NarrowScopeToTransport("transport")
+	if err != nil {
+		return newError("unable to narrow environment to transport").Base(err)
+	}
+	ctx = envctx.ContextWithEnvironment(ctx, transportEnvironment)
 	hub, err := internet.ListenTCP(ctx, w.address, w.port, w.stream, func(conn internet.Connection) {
 		go w.callback(conn)
 	})
@@ -371,6 +379,12 @@ func (w *udpWorker) clean() error {
 func (w *udpWorker) Start() error {
 	w.activeConn = make(map[connID]*udpConn, 16)
 	ctx := context.Background()
+	proxyEnvironment := envctx.EnvironmentFromContext(w.ctx).(environment.ProxyEnvironment)
+	transportEnvironment, err := proxyEnvironment.NarrowScopeToTransport("transport")
+	if err != nil {
+		return newError("unable to narrow environment to transport").Base(err)
+	}
+	ctx = envctx.ContextWithEnvironment(ctx, transportEnvironment)
 	h, err := udp.ListenUDP(ctx, w.address, w.port, w.stream, udp.HubCapacity(256))
 	if err != nil {
 		return err
@@ -480,6 +494,12 @@ func (w *dsWorker) Port() net.Port {
 
 func (w *dsWorker) Start() error {
 	ctx := context.Background()
+	proxyEnvironment := envctx.EnvironmentFromContext(w.ctx).(environment.ProxyEnvironment)
+	transportEnvironment, err := proxyEnvironment.NarrowScopeToTransport("transport")
+	if err != nil {
+		return newError("unable to narrow environment to transport").Base(err)
+	}
+	ctx = envctx.ContextWithEnvironment(ctx, transportEnvironment)
 	hub, err := internet.ListenUnix(ctx, w.address, w.stream, func(conn internet.Connection) {
 		go w.callback(conn)
 	})
